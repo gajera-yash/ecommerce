@@ -1,0 +1,10 @@
+const router = require('express').Router();
+const auth = require('../middleware/auth');
+const c = require('../controllers/settingsController');
+router.get('/fee-rules', auth, c.getFeeRules);
+router.post('/fee-rules', auth, c.createFeeRule);
+router.put('/fee-rules/:id', auth, c.updateFeeRule);
+router.delete('/fee-rules/:id', auth, c.deleteFeeRule);
+router.get('/profile', auth, c.getProfile);
+router.put('/profile', auth, c.updateProfile);
+module.exports = router;

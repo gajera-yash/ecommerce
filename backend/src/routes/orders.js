@@ -1,0 +1,10 @@
+const router = require('express').Router();
+const auth = require('../middleware/auth');
+const c = require('../controllers/orderController');
+router.get('/', auth, c.getOrders);
+router.post('/', auth, c.createOrder);
+router.patch('/bulk-status', auth, c.bulkStatus);
+router.get('/:id', auth, c.getOrder);
+router.put('/:id', auth, c.updateOrder);
+router.delete('/:id', auth, c.deleteOrder);
+module.exports = router;
