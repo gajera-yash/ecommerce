@@ -14,7 +14,7 @@ exports.getCategories = async (req, res) => {
 
     query += ' ORDER BY name ASC';
 
-    const [rows] = await pool.query(query, values);
+    const [rows] = await pool.execute(query, values);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching categories', error: error.message });
@@ -30,8 +30,8 @@ exports.createCategory = async (req, res) => {
       return res.status(400).json({ message: 'Category name is required' });
     }
 
-    const [result] = await pool.query(
-      'INSERT INTO categories (name, type) VALUES (?, ?)',
+    const [result] = await pool.execute(
+      'INSERT INTO categories (name, type) VALUES (?, ?) RETURNING id',
       [name, type]
     );
 
@@ -53,7 +53,7 @@ exports.updateCategory = async (req, res) => {
     const { id } = req.params;
     const { name, type } = req.body;
 
-    const [result] = await pool.query(
+    const [result] = await pool.execute(
       'UPDATE categories SET name = COALESCE(?, name), type = COALESCE(?, type) WHERE id = ?',
       [name, type, id]
     );
@@ -76,7 +76,7 @@ exports.deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [result] = await pool.query('DELETE FROM categories WHERE id = ?', [id]);
+    const [result] = await pool.execute('DELETE FROM categories WHERE id = ?', [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Category not found' });

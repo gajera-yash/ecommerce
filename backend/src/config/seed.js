@@ -3,12 +3,11 @@ const pool = require('./db');
 require('dotenv').config();
 
 async function seed() {
-  const conn = await pool.getConnection();
   try {
     // Create admin user
     const hash = await bcrypt.hash('Admin@123', 10);
-    await conn.execute(
-      `INSERT IGNORE INTO users (name, email, password_hash, business_name) VALUES (?, ?, ?, ?)`,
+    await pool.execute(
+      `INSERT INTO users (name, email, password_hash, business_name) VALUES (?, ?, ?, ?) ON CONFLICT (email) DO NOTHING`,
       ['Admin', 'admin@business.com', hash, 'My Seller Business']
     );
 
@@ -24,8 +23,8 @@ async function seed() {
       ['Mouse Pad XL', 'MPX-008', 'Accessories', 120, 499, 'Extended gaming mousepad', 200]
     ];
     for (const p of products) {
-      await conn.execute(
-        `INSERT IGNORE INTO products (name, sku, category, cost_price, mrp, description, stock_quantity) VALUES (?,?,?,?,?,?,?)`,
+      await pool.execute(
+        `INSERT INTO products (name, sku, category, cost_price, mrp, description, stock_quantity) VALUES (?,?,?,?,?,?,?) ON CONFLICT (sku) DO NOTHING`,
         p
       );
     }
@@ -40,8 +39,8 @@ async function seed() {
       ['FLIPKART', 'Clothing', 16, 0]
     ];
     for (const r of rules) {
-      await conn.execute(
-        `INSERT IGNORE INTO platform_fee_rules (platform, category, fee_percentage, fixed_fee, effective_from) VALUES (?,?,?,?,CURDATE())`,
+      await pool.execute(
+        `INSERT INTO platform_fee_rules (platform, category, fee_percentage, fixed_fee, effective_from) VALUES (?,?,?,?,CURRENT_DATE)`,
         r
       );
     }
@@ -75,7 +74,7 @@ async function seed() {
       const costTotal = o[7] * o[5];
       const profit = netReceived - costTotal;
       const margin = saleTotal > 0 ? ((profit / saleTotal) * 100) : 0;
-      await conn.execute(
+      await pool.execute(
         `INSERT INTO orders (order_id, platform, product_name, product_sku, category, quantity, sale_price, my_cost_price, platform_fee, shipping_fee, other_deductions, net_amount_received, profit, profit_margin, order_date, delivery_status, payment_status, customer_name, customer_city, customer_state) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [o[0],o[1],o[2],o[3],o[4],o[5],saleTotal,costTotal,platformFee,shippingFee,otherDed,netReceived,profit,margin.toFixed(2),o[11],o[12],o[13],o[14],o[15],o[16]]
       );
@@ -90,7 +89,7 @@ async function seed() {
       ['Return Processing', 600, 'Returns', '2026-04-28', 'Handling returned items']
     ];
     for (const e of expenses) {
-      await conn.execute(
+      await pool.execute(
         `INSERT INTO expenses (title, amount, category, expense_date, notes) VALUES (?,?,?,?,?)`,
         e
       );
@@ -100,7 +99,6 @@ async function seed() {
   } catch (err) {
     console.error('Seed error:', err);
   } finally {
-    conn.release();
     process.exit();
   }
 }

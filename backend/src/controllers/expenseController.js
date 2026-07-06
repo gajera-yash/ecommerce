@@ -18,7 +18,7 @@ exports.createExpense = async (req, res) => {
   try {
     const { title, amount, category, expense_date, notes } = req.body;
     const [result] = await pool.execute(
-      'INSERT INTO expenses (title,amount,category,expense_date,notes) VALUES (?,?,?,?,?)',
+      'INSERT INTO expenses (title,amount,category,expense_date,notes) VALUES (?,?,?,?,?) RETURNING id',
       [title, amount, category||'General', expense_date, notes||'']
     );
     const [rows] = await pool.execute('SELECT * FROM expenses WHERE id = ?', [result.insertId]);

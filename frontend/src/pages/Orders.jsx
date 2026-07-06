@@ -144,16 +144,33 @@ export default function Orders() {
   const handleProductSelect = (sku) => {
     const prod = products.find(p => p.sku === sku);
     if (prod) {
-      form.setFieldsValue({ product_name: prod.name, product_sku: prod.sku, category: prod.category, my_cost_price: prod.cost_price, sale_price: prod.mrp });
+      form.setFieldsValue({ 
+        product_name: prod.name, 
+        product_sku: prod.sku, 
+        category: prod.category, 
+        my_cost_price: prod.cost_price, 
+        packaging_cost: prod.packaging_charge || 0,
+        sale_price: prod.mrp 
+      });
       autoCalcFee();
     }
   };
 
   const autoCalcFee = () => {
     const vals = form.getFieldsValue();
+    const tot = (vals.sale_price || 0) * (vals.quantity || 1);
+    
+    // Calculate GST based on product gst_rate if a product is selected (Inclusive of Sale Price)
+    const prod = products.find(p => p.sku === vals.product_sku);
+    if (prod && prod.gst_rate) {
+      const rate = parseFloat(prod.gst_rate);
+      const taxableValue = tot / (1 + (rate / 100));
+      const gstAmt = tot - taxableValue;
+      form.setFieldsValue({ gst_amount: parseFloat(gstAmt.toFixed(2)) });
+    }
+
     const rule = feeRules.find(r => r.platform === vals.platform && r.category === vals.category);
     if (rule) {
-      const tot = (vals.sale_price || 0) * (vals.quantity || 1);
       const fee = (tot * rule.fee_percentage / 100) + (rule.fixed_fee || 0);
       form.setFieldsValue({ platform_fee: parseFloat(fee.toFixed(2)) });
     }
@@ -425,13 +442,17 @@ export default function Orders() {
             <Col span={6}><Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}><InputNumber min={1} style={{ width: '100%' }} onChange={autoCalcFee} /></Form.Item></Col>
             <Col span={6}><Form.Item name="sale_price" label="Sale Price (unit)" rules={[{ required: true }]}><InputNumber min={0} style={{ width: '100%' }} prefix="₹" onChange={autoCalcFee} /></Form.Item></Col>
             <Col span={6}><Form.Item name="my_cost_price" label="Cost Price (unit)"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
-            <Col span={6}><Form.Item name="platform_fee" label="Platform Fee (total)"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
+            <Col span={6}><Form.Item name="packaging_cost" label="Packaging (unit)"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
           </Row>
           <Row gutter={16}>
+            <Col span={6}><Form.Item name="gst_amount" label="GST Amount (total)"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
+            <Col span={6}><Form.Item name="platform_fee" label="Platform Fee (total)"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
             <Col span={6}><Form.Item name="shipping_fee" label="Shipping Fee"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
             <Col span={6}><Form.Item name="other_deductions" label="Other Deductions"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
-            <Col span={6}><Form.Item name="delivery_status" label="Delivery Status"><Select options={['PENDING','SHIPPED','DELIVERED','CANCELLED','RETURNED'].map(s => ({ value: s, label: s }))} /></Form.Item></Col>
-            <Col span={6}><Form.Item name="payment_status" label="Payment Status"><Select options={['PAID','PENDING','REFUNDED'].map(s => ({ value: s, label: s }))} /></Form.Item></Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}><Form.Item name="delivery_status" label="Delivery Status"><Select options={['PENDING','SHIPPED','DELIVERED','CANCELLED','RETURNED'].map(s => ({ value: s, label: s }))} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="payment_status" label="Payment Status"><Select options={['PAID','PENDING','REFUNDED'].map(s => ({ value: s, label: s }))} /></Form.Item></Col>
           </Row>
           <Row gutter={16}>
             <Col span={8}><Form.Item name="customer_name" label="Customer Name"><Input /></Form.Item></Col>
@@ -490,6 +511,8 @@ export default function Orders() {
               <ProfitRow label="(-) Other Deductions" value={formatCurrency(selectedOrder.other_deductions)} color="#f43f5e" />
               <ProfitRow label="Net Received" value={formatCurrency(selectedOrder.net_amount_received)} color="#6366f1" borderTop />
               <ProfitRow label="(-) Cost Price" value={formatCurrency(selectedOrder.my_cost_price)} color="#f43f5e" />
+              <ProfitRow label="(-) Packaging Cost" value={formatCurrency(selectedOrder.packaging_cost)} color="#f43f5e" />
+              <ProfitRow label="(-) GST Amount" value={formatCurrency(selectedOrder.gst_amount)} color="#f43f5e" />
               <div style={{ background: parseFloat(selectedOrder.profit) >= 0 ? '#d1fae5' : '#fee2e2', borderRadius: 10, padding: '12px 16px', marginTop: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Text style={{ fontWeight: 700, fontSize: 14, color: parseFloat(selectedOrder.profit) >= 0 ? '#059669' : '#dc2626' }}>Net Profit</Text>

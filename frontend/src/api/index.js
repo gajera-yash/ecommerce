@@ -54,6 +54,7 @@ export const deleteExpense = (id) => api.delete(`/expenses/${id}`);
 export const getPlatformReport = (params) => api.get('/reports/platform', { params });
 export const getProductReport = (params) => api.get('/reports/products', { params });
 export const getMonthlyPnl = (params) => api.get('/reports/monthly-pnl', { params });
+export const getOverallSummary = (params) => api.get('/reports/overall-summary', { params });
 export const exportCsv = (params) => api.get('/reports/export-csv', { params, responseType: 'blob' });
 
 // Settings

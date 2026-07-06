@@ -12,7 +12,7 @@ import {
   CalendarOutlined, ArrowUpOutlined, ArrowDownOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { getPlatformReport, getProductReport, getMonthlyPnl, exportCsv } from '../api';
+import { getPlatformReport, getProductReport, getMonthlyPnl, getOverallSummary, exportCsv } from '../api';
 import { formatCurrency } from '../utils';
 
 const { Title, Text } = Typography;
@@ -58,9 +58,10 @@ export default function Reports() {
   const [platformData, setPlatformData] = useState([]);
   const [productData, setProductData]   = useState([]);
   const [pnlData, setPnlData]           = useState([]);
+  const [summaryData, setSummaryData]   = useState(null);
   const [loading, setLoading]           = useState(true);
   const [year, setYear]                 = useState(new Date().getFullYear());
-  const [activeTab, setActiveTab]       = useState('platform');
+  const [activeTab, setActiveTab]       = useState('summary');
 
   useEffect(() => {
     const params = {};
@@ -70,10 +71,12 @@ export default function Reports() {
       getPlatformReport(params),
       getProductReport(params),
       getMonthlyPnl({ year }),
-    ]).then(([p, pr, pnl]) => {
+      getOverallSummary(params)
+    ]).then(([p, pr, pnl, summary]) => {
       setPlatformData(p.data || []);
       setProductData(pr.data || []);
       setPnlData(pnl.data || []);
+      setSummaryData(summary.data || null);
     }).finally(() => setLoading(false));
   }, [dateRange, year]);
 
@@ -89,9 +92,10 @@ export default function Reports() {
   };
 
   const presets = [
-    { label: 'This Week',  value: [dayjs().startOf('week'), dayjs()] },
+    { label: 'Today',      value: [dayjs(), dayjs()] },
+    { label: 'Last 7 Days',value: [dayjs().subtract(7, 'day'), dayjs()] },
+    { label: 'Last 30 Days',value: [dayjs().subtract(30, 'day'), dayjs()] },
     { label: 'This Month', value: [dayjs().startOf('month'), dayjs()] },
-    { label: 'Last Month', value: [dayjs().subtract(1,'month').startOf('month'), dayjs().subtract(1,'month').endOf('month')] },
     { label: 'This Year',  value: [dayjs().startOf('year'), dayjs()] },
   ];
 
@@ -209,10 +213,53 @@ export default function Reports() {
 
       {/* ── Tab Switcher ──────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+        <TabBtn active={activeTab === 'summary'}  onClick={() => setActiveTab('summary')}  icon="📑" label="Overall Summary" />
         <TabBtn active={activeTab === 'platform'} onClick={() => setActiveTab('platform')} icon="🛒" label="Platform-wise" />
         <TabBtn active={activeTab === 'product'}  onClick={() => setActiveTab('product')}  icon="📦" label="Product-wise" />
         <TabBtn active={activeTab === 'pnl'}      onClick={() => setActiveTab('pnl')}      icon="📅" label="Monthly P&L" />
       </div>
+
+      {/* ── Summary Tab ───────────────────────────────────────────── */}
+      {activeTab === 'summary' && summaryData && (
+        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} lg={6}>
+              <div style={{ background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                <Text style={{ color: '#64748b', fontSize: 13, fontWeight: 600, textTransform: 'uppercase' }}>Gross Revenue</Text>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#6366f1', marginTop: 8 }}>{formatCurrency(summaryData.gross_revenue)}</div>
+              </div>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <div style={{ background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                <Text style={{ color: '#64748b', fontSize: 13, fontWeight: 600, textTransform: 'uppercase' }}>Order Profit</Text>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#0ea5e9', marginTop: 8 }}>{formatCurrency(summaryData.order_profit)}</div>
+              </div>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <div style={{ background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                <Text style={{ color: '#64748b', fontSize: 13, fontWeight: 600, textTransform: 'uppercase' }}>Total Expenses</Text>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#f43f5e', marginTop: 8 }}>{formatCurrency(summaryData.expenses)}</div>
+              </div>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <div style={{ background: 'linear-gradient(135deg, #10b981, #059669)', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)' }}>
+                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase' }}>Net Profit</Text>
+                <div style={{ fontSize: 28, fontWeight: 900, color: '#ffffff', marginTop: 8 }}>{formatCurrency(summaryData.final_net_profit)}</div>
+              </div>
+            </Col>
+          </Row>
+          <div style={{ marginTop: 24, padding: 24, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0' }}>
+            <Title level={5} style={{ marginTop: 0 }}>Calculation Breakdown</Title>
+            <Text style={{ display: 'block', color: '#64748b', marginBottom: 8 }}>The Net Profit is calculated as:</Text>
+            <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8, fontFamily: 'monospace', fontSize: 14 }}>
+              <strong>Net Profit</strong> = Order Profit ({formatCurrency(summaryData.order_profit)}) - Total Expenses ({formatCurrency(summaryData.expenses)})
+            </div>
+            <Text style={{ display: 'block', color: '#64748b', marginTop: 12, fontSize: 13 }}>
+              <em>* Order Profit already deducts product cost, packaging, GST, and platform fees.</em>
+            </Text>
+          </div>
+        </div>
+      )}
 
       {/* ── Platform Tab ──────────────────────────────────────────── */}
       {activeTab === 'platform' && (

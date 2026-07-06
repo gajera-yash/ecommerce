@@ -41,12 +41,12 @@ exports.monthlyPnl = async (req, res) => {
         COALESCE(SUM(net_amount_received),0) as net_revenue,
         COALESCE(SUM(my_cost_price),0) as total_cost,
         COALESCE(SUM(profit),0) as net_profit
-       FROM orders WHERE YEAR(order_date) = ? GROUP BY month ORDER BY month`,
+       FROM orders WHERE EXTRACT(YEAR FROM order_date) = ? GROUP BY month ORDER BY month`,
       [year]
     );
     const [expenses] = await pool.execute(
       `SELECT DATE_FORMAT(expense_date,'%Y-%m') as month, COALESCE(SUM(amount),0) as total_expenses
-       FROM expenses WHERE YEAR(expense_date) = ? GROUP BY month ORDER BY month`,
+       FROM expenses WHERE EXTRACT(YEAR FROM expense_date) = ? GROUP BY month ORDER BY month`,
       [year]
     );
     // Merge expenses into order months
@@ -59,6 +59,35 @@ exports.monthlyPnl = async (req, res) => {
       margin: o.gross_revenue > 0 ? (((o.net_profit - (expMap[o.month] || 0)) / o.gross_revenue) * 100).toFixed(2) : 0
     }));
     res.json(result);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+exports.overallSummary = async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    let orderSql = `SELECT COALESCE(SUM(sale_price),0) as gross_revenue, COALESCE(SUM(profit),0) as net_profit FROM orders WHERE 1=1`;
+    let expSql = `SELECT COALESCE(SUM(amount),0) as total_expenses FROM expenses WHERE 1=1`;
+    const orderParams = [];
+    const expParams = [];
+    
+    if (from) {
+      orderSql += ' AND order_date >= ?'; orderParams.push(from);
+      expSql += ' AND expense_date >= ?'; expParams.push(from);
+    }
+    if (to) {
+      orderSql += ' AND order_date <= ?'; orderParams.push(to);
+      expSql += ' AND expense_date <= ?'; expParams.push(to);
+    }
+    
+    const [[orderData]] = await pool.execute(orderSql, orderParams);
+    const [[expData]] = await pool.execute(expSql, expParams);
+    
+    res.json({
+      gross_revenue: orderData.gross_revenue,
+      order_profit: orderData.net_profit,
+      expenses: expData.total_expenses,
+      final_net_profit: orderData.net_profit - expData.total_expenses
+    });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 

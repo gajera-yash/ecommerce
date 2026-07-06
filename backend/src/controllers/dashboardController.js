@@ -7,8 +7,8 @@ exports.getSummary = async (req, res) => {
 
     const [[todayOrders]] = await pool.execute('SELECT COUNT(*) as count FROM orders WHERE order_date = ?', [today]);
     const [[monthRevenue]] = await pool.execute('SELECT COALESCE(SUM(sale_price),0) as gross, COALESCE(SUM(profit),0) as net_profit, COUNT(*) as total_orders FROM orders WHERE order_date >= ?', [monthStart]);
-    const [[pendingOrders]] = await pool.execute('SELECT COUNT(*) as count FROM orders WHERE delivery_status = "PENDING"');
-    const [[returnedCancelled]] = await pool.execute('SELECT COUNT(*) as count FROM orders WHERE delivery_status IN ("RETURNED","CANCELLED")');
+    const [[pendingOrders]] = await pool.execute("SELECT COUNT(*) as count FROM orders WHERE delivery_status = 'PENDING'");
+    const [[returnedCancelled]] = await pool.execute("SELECT COUNT(*) as count FROM orders WHERE delivery_status IN ('RETURNED','CANCELLED')");
     const [[monthExpenses]] = await pool.execute('SELECT COALESCE(SUM(amount),0) as total FROM expenses WHERE expense_date >= ?', [monthStart]);
 
     res.json({
@@ -35,7 +35,7 @@ exports.getCharts = async (req, res) => {
     // Monthly trend - last 6 months
     const [monthlyTrend] = await pool.execute(
       `SELECT DATE_FORMAT(order_date, '%Y-%m') as month, COALESCE(SUM(sale_price),0) as revenue, COALESCE(SUM(profit),0) as profit, COUNT(*) as orders
-       FROM orders WHERE order_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) GROUP BY month ORDER BY month`
+       FROM orders WHERE order_date >= CURRENT_DATE - INTERVAL '6 months' GROUP BY month ORDER BY month`
     );
 
     res.json({ platformSplit, monthlyTrend });

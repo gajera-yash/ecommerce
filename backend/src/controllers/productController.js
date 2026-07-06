@@ -9,10 +9,10 @@ exports.getProducts = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
   try {
-    const { name, sku, category, cost_price, mrp, description, stock_quantity, low_stock_threshold } = req.body;
+    const { name, sku, category, cost_price, packaging_charge, gst_rate, mrp, description, stock_quantity, low_stock_threshold } = req.body;
     const [result] = await pool.execute(
-      'INSERT INTO products (name,sku,category,cost_price,mrp,description,stock_quantity,low_stock_threshold) VALUES (?,?,?,?,?,?,?,?)',
-      [name, sku, category||'', cost_price||0, mrp||0, description||'', stock_quantity||0, low_stock_threshold||10]
+      'INSERT INTO products (name,sku,category,cost_price,packaging_charge,gst_rate,mrp,description,stock_quantity,low_stock_threshold) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id',
+      [name, sku, category||'', cost_price||0, packaging_charge||0, gst_rate||0, mrp||0, description||'', stock_quantity||0, low_stock_threshold||10]
     );
     const [rows] = await pool.execute('SELECT * FROM products WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
@@ -24,10 +24,10 @@ exports.createProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
   try {
-    const { name, sku, category, cost_price, mrp, description, stock_quantity, low_stock_threshold } = req.body;
+    const { name, sku, category, cost_price, packaging_charge, gst_rate, mrp, description, stock_quantity, low_stock_threshold } = req.body;
     await pool.execute(
-      'UPDATE products SET name=?,sku=?,category=?,cost_price=?,mrp=?,description=?,stock_quantity=?,low_stock_threshold=? WHERE id=?',
-      [name, sku, category||'', cost_price||0, mrp||0, description||'', stock_quantity||0, low_stock_threshold||10, req.params.id]
+      'UPDATE products SET name=?,sku=?,category=?,cost_price=?,packaging_charge=?,gst_rate=?,mrp=?,description=?,stock_quantity=?,low_stock_threshold=? WHERE id=?',
+      [name, sku, category||'', cost_price||0, packaging_charge||0, gst_rate||0, mrp||0, description||'', stock_quantity||0, low_stock_threshold||10, req.params.id]
     );
     const [rows] = await pool.execute('SELECT * FROM products WHERE id = ?', [req.params.id]);
     res.json(rows[0]);

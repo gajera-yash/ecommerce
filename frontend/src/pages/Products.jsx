@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Table, Button, Card, Modal, Form, Input, InputNumber,
+  Table, Button, Card, Modal, Form, Input, InputNumber, Select,
   Space, Tag, Typography, message, Empty, Progress, Row, Col, Tooltip, Badge
 } from 'antd';
 import {
@@ -105,7 +105,7 @@ export default function Products() {
   const lowStockCount  = products.filter(p => p.stock_quantity <= (p.low_stock_threshold || 10)).length;
   const totalStock     = products.reduce((s, p) => s + (p.stock_quantity || 0), 0);
   const avgMargin      = products.length > 0
-    ? (products.reduce((s, p) => s + ((p.mrp - p.cost_price) / Math.max(p.mrp, 1) * 100), 0) / products.length).toFixed(1)
+    ? (products.reduce((s, p) => s + ((p.mrp - (parseFloat(p.cost_price||0) + parseFloat(p.packaging_charge||0))) / Math.max(p.mrp, 1) * 100), 0) / products.length).toFixed(1)
     : 0;
 
   const columns = [
@@ -143,7 +143,8 @@ export default function Products() {
     {
       title: 'Margin', key: 'margin', align: 'center', width: 80,
       render: (_, r) => {
-        const m = r.mrp > 0 ? ((r.mrp - r.cost_price) / r.mrp * 100).toFixed(1) : 0;
+        const totalCost = parseFloat(r.cost_price || 0) + parseFloat(r.packaging_charge || 0);
+        const m = r.mrp > 0 ? ((r.mrp - totalCost) / r.mrp * 100).toFixed(1) : 0;
         return <span style={{ fontWeight: 700, color: m >= 30 ? '#10b981' : m >= 15 ? '#f59e0b' : '#f43f5e' }}>{m}%</span>;
       }
     },
@@ -255,16 +256,28 @@ export default function Products() {
             </Col>
           </Row>
           <Row gutter={12}>
-            <Col span={8}>
+            <Col span={6}>
               <Form.Item name="cost_price" label="Cost Price">
                 <InputNumber min={0} prefix="₹" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
+              <Form.Item name="packaging_charge" label="Packaging (₹)">
+                <InputNumber min={0} prefix="₹" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="gst_rate" label="GST Rate (%)">
+                <InputNumber min={0} max={100} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
               <Form.Item name="mrp" label="MRP / Sale Price">
                 <InputNumber min={0} prefix="₹" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
+          </Row>
+          <Row gutter={12}>
             <Col span={8}>
               <Form.Item name="stock_quantity" label="Stock Qty">
                 <InputNumber min={0} style={{ width: '100%' }} />

@@ -12,7 +12,7 @@ exports.createFeeRule = async (req, res) => {
   try {
     const { platform, category, fee_percentage, fixed_fee, effective_from } = req.body;
     const [result] = await pool.execute(
-      'INSERT INTO platform_fee_rules (platform,category,fee_percentage,fixed_fee,effective_from) VALUES (?,?,?,?,?)',
+      'INSERT INTO platform_fee_rules (platform,category,fee_percentage,fixed_fee,effective_from) VALUES (?,?,?,?,?) RETURNING id',
       [platform, category, fee_percentage||0, fixed_fee||0, effective_from||new Date().toISOString().split('T')[0]]
     );
     const [rows] = await pool.execute('SELECT * FROM platform_fee_rules WHERE id = ?', [result.insertId]);

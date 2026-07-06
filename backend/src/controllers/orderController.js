@@ -48,17 +48,19 @@ exports.createOrder = async (req, res) => {
     const o = req.body;
     const saleTotal = (o.sale_price || 0) * (o.quantity || 1);
     const costTotal = (o.my_cost_price || 0) * (o.quantity || 1);
+    const packagingCost = (o.packaging_cost || 0) * (o.quantity || 1);
+    const gstAmount = o.gst_amount || 0;
     const platformFee = o.platform_fee || 0;
     const shippingFee = o.shipping_fee || 0;
     const otherDeductions = o.other_deductions || 0;
     const netReceived = saleTotal - platformFee - shippingFee - otherDeductions;
-    const profit = netReceived - costTotal;
+    const profit = netReceived - costTotal - packagingCost - gstAmount;
     const margin = saleTotal > 0 ? ((profit / saleTotal) * 100).toFixed(2) : 0;
 
     const [result] = await pool.execute(
-      `INSERT INTO orders (order_id,platform,product_name,product_sku,category,quantity,sale_price,my_cost_price,platform_fee,shipping_fee,other_deductions,net_amount_received,profit,profit_margin,order_date,delivery_status,payment_status,customer_name,customer_city,customer_state,notes)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [o.order_id,o.platform,o.product_name,o.product_sku||'',o.category||'',o.quantity||1,saleTotal,costTotal,platformFee,shippingFee,otherDeductions,netReceived,profit,margin,o.order_date,o.delivery_status||'PENDING',o.payment_status||'PENDING',o.customer_name||'',o.customer_city||'',o.customer_state||'',o.notes||'']
+      `INSERT INTO orders (order_id,platform,product_name,product_sku,category,quantity,sale_price,my_cost_price,packaging_cost,gst_amount,platform_fee,shipping_fee,other_deductions,net_amount_received,profit,profit_margin,order_date,delivery_status,payment_status,customer_name,customer_city,customer_state,notes)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
+      [o.order_id,o.platform,o.product_name,o.product_sku||'',o.category||'',o.quantity||1,saleTotal,costTotal,packagingCost,gstAmount,platformFee,shippingFee,otherDeductions,netReceived,profit,margin,o.order_date||new Date().toISOString().split('T')[0],o.delivery_status||'PENDING',o.payment_status||'PENDING',o.customer_name||'',o.customer_city||'',o.customer_state||'',o.notes||'']
     );
     const [rows] = await pool.execute('SELECT * FROM orders WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
@@ -70,16 +72,18 @@ exports.updateOrder = async (req, res) => {
     const o = req.body;
     const saleTotal = (o.sale_price || 0) * (o.quantity || 1);
     const costTotal = (o.my_cost_price || 0) * (o.quantity || 1);
+    const packagingCost = (o.packaging_cost || 0) * (o.quantity || 1);
+    const gstAmount = o.gst_amount || 0;
     const platformFee = o.platform_fee || 0;
     const shippingFee = o.shipping_fee || 0;
     const otherDeductions = o.other_deductions || 0;
     const netReceived = saleTotal - platformFee - shippingFee - otherDeductions;
-    const profit = netReceived - costTotal;
+    const profit = netReceived - costTotal - packagingCost - gstAmount;
     const margin = saleTotal > 0 ? ((profit / saleTotal) * 100).toFixed(2) : 0;
 
     await pool.execute(
-      `UPDATE orders SET order_id=?,platform=?,product_name=?,product_sku=?,category=?,quantity=?,sale_price=?,my_cost_price=?,platform_fee=?,shipping_fee=?,other_deductions=?,net_amount_received=?,profit=?,profit_margin=?,order_date=?,delivery_status=?,payment_status=?,customer_name=?,customer_city=?,customer_state=?,notes=? WHERE id=?`,
-      [o.order_id,o.platform,o.product_name,o.product_sku||'',o.category||'',o.quantity||1,saleTotal,costTotal,platformFee,shippingFee,otherDeductions,netReceived,profit,margin,o.order_date,o.delivery_status,o.payment_status,o.customer_name||'',o.customer_city||'',o.customer_state||'',o.notes||'',req.params.id]
+      `UPDATE orders SET order_id=?,platform=?,product_name=?,product_sku=?,category=?,quantity=?,sale_price=?,my_cost_price=?,packaging_cost=?,gst_amount=?,platform_fee=?,shipping_fee=?,other_deductions=?,net_amount_received=?,profit=?,profit_margin=?,order_date=?,delivery_status=?,payment_status=?,customer_name=?,customer_city=?,customer_state=?,notes=? WHERE id=?`,
+      [o.order_id,o.platform,o.product_name,o.product_sku||'',o.category||'',o.quantity||1,saleTotal,costTotal,packagingCost,gstAmount,platformFee,shippingFee,otherDeductions,netReceived,profit,margin,o.order_date||new Date().toISOString().split('T')[0],o.delivery_status,o.payment_status,o.customer_name||'',o.customer_city||'',o.customer_state||'',o.notes||'',req.params.id]
     );
     const [rows] = await pool.execute('SELECT * FROM orders WHERE id = ?', [req.params.id]);
     res.json(rows[0]);
