@@ -80,6 +80,7 @@ export default function Orders() {
   const [feeRules, setFeeRules]       = useState([]);
   const [categories, setCategories]   = useState([]);
   const [form]                        = Form.useForm();
+  const platformVal = Form.useWatch('platform', form);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -137,7 +138,7 @@ export default function Orders() {
 
   const openAdd = () => {
     setEditing(null); form.resetFields();
-    form.setFieldsValue({ platform: 'AMAZON', delivery_status: 'PENDING', payment_status: 'PENDING', quantity: 1, order_date: dayjs() });
+    form.setFieldsValue({ platform: 'AMAZON', delivery_status: 'PENDING', payment_status: 'PENDING', quantity: 1, order_date: dayjs(), gst_tcs_credit: 0, tds_credit: 0 });
     setModalOpen(true);
   };
 
@@ -440,15 +441,27 @@ export default function Orders() {
           </Row>
           <Row gutter={16}>
             <Col span={6}><Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}><InputNumber min={1} style={{ width: '100%' }} onChange={autoCalcFee} /></Form.Item></Col>
-            <Col span={6}><Form.Item name="sale_price" label="Sale Price (unit)" rules={[{ required: true }]}><InputNumber min={0} style={{ width: '100%' }} prefix="₹" onChange={autoCalcFee} /></Form.Item></Col>
+            <Col span={6}><Form.Item name="sale_price" label={platformVal === 'FLIPKART' ? 'Order Item Value (unit)' : 'Sale Price (unit)'} rules={[{ required: true }]}><InputNumber min={0} style={{ width: '100%' }} prefix="₹" onChange={autoCalcFee} /></Form.Item></Col>
             <Col span={6}><Form.Item name="my_cost_price" label="Cost Price (unit)"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
             <Col span={6}><Form.Item name="packaging_cost" label="Packaging (unit)"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
           </Row>
           <Row gutter={16}>
             <Col span={6}><Form.Item name="gst_amount" label="GST Amount (total)"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
-            <Col span={6}><Form.Item name="platform_fee" label="Platform Fee (total)"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
-            <Col span={6}><Form.Item name="shipping_fee" label="Shipping Fee"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
-            <Col span={6}><Form.Item name="other_deductions" label="Other Deductions"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
+            <Col span={6}><Form.Item name="platform_fee" label={platformVal === 'FLIPKART' ? 'Marketplace Fees' : 'Platform Fee (total)'} prefix="₹"><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
+            <Col span={6}><Form.Item name="shipping_fee" label={platformVal === 'FLIPKART' ? 'Customer Logistics Fee' : 'Shipping Fee'}><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
+            <Col span={6}><Form.Item name="other_deductions" label={platformVal === 'FLIPKART' ? 'Taxes' : 'Other Deductions'}><InputNumber min={0} style={{ width: '100%' }} prefix="₹" /></Form.Item></Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="gst_tcs_credit" label={platformVal === 'FLIPKART' ? 'Input GST Credit (GST + TCS)' : 'GST + TCS Credit'}>
+                <InputNumber min={0} style={{ width: '100%' }} prefix="₹" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="tds_credit" label={platformVal === 'FLIPKART' ? 'Income Tax Credit (TDS)' : 'TDS Credit'}>
+                <InputNumber min={0} style={{ width: '100%' }} prefix="₹" />
+              </Form.Item>
+            </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}><Form.Item name="delivery_status" label="Delivery Status"><Select options={['PENDING','SHIPPED','DELIVERED','CANCELLED','RETURNED'].map(s => ({ value: s, label: s }))} /></Form.Item></Col>
@@ -505,14 +518,38 @@ export default function Orders() {
             {/* Profit breakdown */}
             <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', marginBottom: 14, border: '1px solid #f1f5f9' }}>
               <Text style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>💰 Profit Breakdown</Text>
-              <ProfitRow label="Sale Price" value={formatCurrency(selectedOrder.sale_price)} />
-              <ProfitRow label="(-) Platform Fee" value={formatCurrency(selectedOrder.platform_fee)} color="#f43f5e" />
-              <ProfitRow label="(-) Shipping" value={formatCurrency(selectedOrder.shipping_fee)} color="#f43f5e" />
-              <ProfitRow label="(-) Other Deductions" value={formatCurrency(selectedOrder.other_deductions)} color="#f43f5e" />
-              <ProfitRow label="Net Received" value={formatCurrency(selectedOrder.net_amount_received)} color="#6366f1" borderTop />
-              <ProfitRow label="(-) Cost Price" value={formatCurrency(selectedOrder.my_cost_price)} color="#f43f5e" />
-              <ProfitRow label="(-) Packaging Cost" value={formatCurrency(selectedOrder.packaging_cost)} color="#f43f5e" />
-              <ProfitRow label="(-) GST Amount" value={formatCurrency(selectedOrder.gst_amount)} color="#f43f5e" />
+              
+              {selectedOrder.platform === 'FLIPKART' ? (
+                <>
+                  <ProfitRow label="Order Item Value" value={formatCurrency(selectedOrder.sale_price)} />
+                  <ProfitRow label="(-) Customer Logistics Fee" value={formatCurrency(selectedOrder.shipping_fee)} color="#f43f5e" />
+                  <ProfitRow label="Seller Price" value={formatCurrency(parseFloat(selectedOrder.sale_price) - parseFloat(selectedOrder.shipping_fee))} bold borderTop />
+                  
+                  <ProfitRow label="(-) Marketplace Fees" value={formatCurrency(selectedOrder.platform_fee)} color="#f43f5e" />
+                  <ProfitRow label="(-) Taxes" value={formatCurrency(selectedOrder.other_deductions)} color="#f43f5e" />
+                  <ProfitRow label="Bank Settlement" value={formatCurrency(selectedOrder.net_amount_received)} color="#1d4ed8" bold borderTop />
+                  
+                  <ProfitRow label="(+) Input GST Credit (GST + TCS)" value={formatCurrency(selectedOrder.gst_tcs_credit || 0)} color="#059669" />
+                  <ProfitRow label="(+) Income Tax Credit (TDS)" value={formatCurrency(selectedOrder.tds_credit || 0)} color="#059669" />
+                  
+                  <Divider style={{ margin: '8px 0' }} />
+                  <ProfitRow label="(-) Cost Price" value={formatCurrency(selectedOrder.my_cost_price)} color="#f43f5e" />
+                  <ProfitRow label="(-) Packaging Cost" value={formatCurrency(selectedOrder.packaging_cost)} color="#f43f5e" />
+                  <ProfitRow label="(-) GST Amount" value={formatCurrency(selectedOrder.gst_amount)} color="#f43f5e" />
+                </>
+              ) : (
+                <>
+                  <ProfitRow label="Sale Price" value={formatCurrency(selectedOrder.sale_price)} />
+                  <ProfitRow label="(-) Platform Fee" value={formatCurrency(selectedOrder.platform_fee)} color="#f43f5e" />
+                  <ProfitRow label="(-) Shipping" value={formatCurrency(selectedOrder.shipping_fee)} color="#f43f5e" />
+                  <ProfitRow label="(-) Other Deductions" value={formatCurrency(selectedOrder.other_deductions)} color="#f43f5e" />
+                  <ProfitRow label="Net Received" value={formatCurrency(selectedOrder.net_amount_received)} color="#6366f1" borderTop />
+                  <ProfitRow label="(-) Cost Price" value={formatCurrency(selectedOrder.my_cost_price)} color="#f43f5e" />
+                  <ProfitRow label="(-) Packaging Cost" value={formatCurrency(selectedOrder.packaging_cost)} color="#f43f5e" />
+                  <ProfitRow label="(-) GST Amount" value={formatCurrency(selectedOrder.gst_amount)} color="#f43f5e" />
+                </>
+              )}
+
               <div style={{ background: parseFloat(selectedOrder.profit) >= 0 ? '#d1fae5' : '#fee2e2', borderRadius: 10, padding: '12px 16px', marginTop: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Text style={{ fontWeight: 700, fontSize: 14, color: parseFloat(selectedOrder.profit) >= 0 ? '#059669' : '#dc2626' }}>Net Profit</Text>

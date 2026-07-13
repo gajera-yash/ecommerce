@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS orders (
   order_date DATE NOT NULL,
   delivery_status VARCHAR(50) DEFAULT 'PENDING' CHECK (delivery_status IN ('PENDING','SHIPPED','DELIVERED','CANCELLED','RETURNED')),
   payment_status VARCHAR(50) DEFAULT 'PENDING' CHECK (payment_status IN ('PAID','PENDING','REFUNDED')),
+  gst_tcs_credit DECIMAL(10,2) DEFAULT 0,
+  tds_credit DECIMAL(10,2) DEFAULT 0,
   customer_name VARCHAR(150),
   customer_city VARCHAR(100),
   customer_state VARCHAR(100),
